@@ -4147,5 +4147,78 @@ class saaa {
         }
         return grid;
     }
-    
+    // 建立邻接表，保存车到车之间是否存在直接的连线，也就是是否可以直接换乘
+    Map<Integer, Set<Integer>> bus2buses = new HashMap<>();
+    // 保存车经过那些站台
+    Map<Integer, Set<Integer>> bus2stations = new HashMap<>();
+    int res;
+    public int numBusesToDestination(int[][] routes, int source, int target) {
+        // 坑爹的特判
+        if(source == target) return 0;
+
+        int n = routes.length;
+        res = n + 1;
+        // 保存站台有哪些车经过
+        Map<Integer, List<Integer>> station2buses = new HashMap<>();
+
+        // 初始化两个映射
+        for(int i = 0; i < n; i++) {
+            bus2buses.put(i, new HashSet<>());
+            bus2stations.put(i, new HashSet<>());
+        }
+
+        // 分别填入车和站台之间的相对关系
+        for(int i = 0; i < n; i++) {
+            for(int r : routes[i]) {
+                if(!station2buses.containsKey(r)) {station2buses.put(r, new ArrayList<>());}
+                station2buses.get(r).add(i);
+                bus2stations.get(i).add(r);
+            }
+        }
+
+        if(!station2buses.containsKey(target)) return -1;
+
+        // 填入车和车之间的直接关系
+        for(int s : station2buses.keySet()) {
+            for(int i = 0; i < station2buses.get(s).size(); i++) {
+                // 如果两辆车的路线中存在同一个站台，那么这两辆车可以直接换乘
+                bus2buses.get(station2buses.get(s).get(i)).addAll(station2buses.get(s));
+            }
+        }
+
+        // 遍历当前站台为出发点的所有车，作为dfs的出发车辆
+        for(int cur : station2buses.get(source)) {
+            Set<Integer> start = new HashSet<>(), end = new HashSet<>();
+            // 加入起点集合
+            start.add(cur);
+            // 加入终点集合
+            end.addAll(station2buses.get(target));
+            // 如果当前车的线路中已经包含了目标站台，那么只要乘一次车
+            if(bus2stations.get(cur).contains(target)) return 1;
+            // 宽搜比较
+            res = Math.min(res, bfs(start, end, 2, n));
+        }
+
+        return res == n + 1 ? -1 : res;
+    }
+
+    // 宽搜，参数分别代表起点集合、终点集合、当前搜索的深度，最大深度
+    private int bfs(Set<Integer> start, Set<Integer> end,  int len, int max) {
+        if(start.size() == 0 || len > max) return max + 1;
+
+        Set<Integer> next = new HashSet<>();
+        // 枚举所有节点
+        for(int cur : start) {
+            if(!bus2buses.containsKey(cur)) continue;
+            // 枚举所有起点可以到达的所有下一个节点
+            for(int n : bus2buses.get(cur)) {
+                // 如果包含了终点，那么可以返回长度了
+                if(end.contains(n)) return len;
+                    // 不然需要将当前点放到下一个起点集合中在进行搜索
+                else next.add(n);
+            }
+        }
+
+        return bfs(next, end, len + 1, max);
+    }
 }
